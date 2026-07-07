@@ -40,10 +40,19 @@
     width:172px; flex:0 0 auto; background:var(--panel); border-right:1px solid var(--line);
     overflow-y:auto; padding:8px 8px 30px;
   }
-  #palette h3{
-    font-size:10.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--dim);
-    margin:12px 4px 5px;
+  .phead{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+    cursor:pointer; padding:8px 8px; border-radius:7px; margin-top:4px;
+    font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--dim); user-select:none; -webkit-user-select:none;
   }
+  .phead:hover{background:#1a2438; color:var(--text)}
+  .phead .pcount{font-weight:400; letter-spacing:0; margin-left:auto; opacity:.7}
+  .phead .chev{font-size:9px; transition:transform .18s}
+  .pgroup.open .phead{color:var(--accent)}
+  .pgroup.open .chev{transform:rotate(90deg)}
+  .pitems{display:none; padding-bottom:2px}
+  .pgroup.open .pitems{display:block}
   .pitem{
     display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:8px;
     cursor:grab; border:1px solid transparent; user-select:none; -webkit-user-select:none;
@@ -1075,16 +1084,26 @@ requestAnimationFrame(animate);
 /* ------------------ palette ------------------ */
 (function buildPalette(){
   const pal=$('#palette');
-  for(const cat of CATS){
-    const h=document.createElement('h3'); h.textContent=cat; pal.appendChild(h);
-    for(const type in DEFS){
-      if(DEFS[type].cat!==cat) continue;
+  CATS.forEach((cat, ci)=>{
+    const types=Object.keys(DEFS).filter(t=>DEFS[t].cat===cat);
+    const grp=document.createElement('div');
+    grp.className='pgroup'+(ci===0? ' open':'');   // accordion: only one group open at a time
+    grp.innerHTML=`<div class="phead"><span>${cat}</span><span class="pcount">${types.length}</span><span class="chev">▶</span></div>
+      <div class="pitems"></div>`;
+    const itemsEl=grp.querySelector('.pitems');
+    for(const type of types){
       const item=document.createElement('div'); item.className='pitem'; item.dataset.type=type;
       item.innerHTML=`<svg width="34" height="34" viewBox="0 0 ${CS} ${CS}">${blockSVG(type, DEFS[type].props, 0, CS)}</svg>
         <div class="plabel">${DEFS[type].name}</div>`;
-      pal.appendChild(item);
+      itemsEl.appendChild(item);
     }
-  }
+    grp.querySelector('.phead').addEventListener('click', ()=>{
+      const wasOpen=grp.classList.contains('open');
+      pal.querySelectorAll('.pgroup').forEach(g=>g.classList.remove('open'));
+      if(!wasOpen) grp.classList.add('open');
+    });
+    pal.appendChild(grp);
+  });
 })();
 
 /* ------------------ interaction: drag & drop ------------------ */
