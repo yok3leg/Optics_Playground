@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optics Playground</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --panel:#111827; --panel2:#0e1524; --line:#243049;
+    --text:#dbe4f5; --dim:#8494b3; --accent:#4cc9f0; --accent2:#f0a44c;
+    --sel:#ffd166; --danger:#ef476f; --ok:#06d6a0;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:13px; overflow:hidden; display:flex; flex-direction:column;
+  }
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; gap:10px; padding:8px 14px;
+    background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  header h1{font-size:15px; font-weight:700; letter-spacing:.4px; margin-right:6px}
+  header h1 span{color:var(--accent)}
+  header .spacer{flex:1}
+  .btn{
+    background:#1a2438; color:var(--text); border:1px solid var(--line);
+    padding:5px 11px; border-radius:7px; cursor:pointer; font-size:12.5px;
+    transition:background .12s;
+  }
+  .btn:hover{background:#243354}
+  .btn.warn:hover{background:#3a1b2a; border-color:var(--danger)}
+  select.btn{appearance:auto}
+  /* ---------- layout ---------- */
+  #main{flex:1; display:flex; min-height:0}
+  /* palette */
+  #palette{
+    width:172px; flex:0 0 auto; background:var(--panel); border-right:1px solid var(--line);
+    overflow-y:auto; padding:8px 8px 30px;
+  }
+  #palette h3{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--dim);
+    margin:12px 4px 5px;
+  }
+  .pitem{
+    display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:8px;
+    cursor:grab; border:1px solid transparent; user-select:none; -webkit-user-select:none;
+  }
+  .pitem:hover{background:#1a2438; border-color:var(--line)}
+  .pitem svg{flex:0 0 auto}
+  .pitem .plabel{font-size:12px; line-height:1.15}
+  /* board */
+  #boardarea{flex:1; position:relative; display:flex; min-width:0}
+  #boardwrap{flex:1; overflow:auto; background:
+    radial-gradient(1200px 600px at 60% 40%, #0e1526 0%, var(--bg) 70%);}
+  #boardsize{position:relative}
+  #boardinner{position:absolute; left:22px; top:22px; transform-origin:0 0}
+  #zoomctl{position:absolute; right:16px; bottom:16px; display:flex; gap:6px; z-index:5;
+    background:rgba(17,24,39,.88); border:1px solid var(--line); border-radius:10px; padding:5px;
+    backdrop-filter:blur(3px)}
+  #zoomctl .btn{padding:4px 10px}
+  #zoomctl #zoomPct{min-width:52px; text-align:center; color:var(--dim)}
+  .gridrow{display:flex; align-items:center; gap:8px; margin-bottom:7px}
+  .gridrow label{flex:1; color:var(--dim); font-size:12px}
+  .gridrow input{width:60px; background:#1a2438; border:1px solid var(--line); color:var(--text);
+    border-radius:6px; padding:4px 6px; font-size:12.5px}
+  #board{display:block; background:#0d1322; border:1px solid var(--line); border-radius:12px;
+    touch-action:none;}
+  #windows{position:absolute; left:0; top:0; pointer-events:none}
+  .dwin{
+    position:absolute; width:158px; background:rgba(13,19,34,.94); border:1px solid var(--line);
+    border-radius:9px; padding:5px 6px 6px; pointer-events:auto;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); backdrop-filter:blur(2px);
+  }
+  .dwin h4{font-size:10px; color:var(--dim); letter-spacing:.6px; text-transform:uppercase; margin-bottom:3px;
+    display:flex; justify-content:space-between}
+  .dwin h4 b{color:var(--text)}
+  .dwin canvas{display:block; width:146px; height:86px; border-radius:5px; background:#080c16}
+  .dwin .dval{font-size:11px; margin-top:3px; color:var(--accent)}
+  .dwin .dval.sat{color:var(--danger); font-weight:700}
+  /* right panel */
+  #right{
+    width:236px; flex:0 0 auto; background:var(--panel); border-left:1px solid var(--line);
+    overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:12px;
+  }
+  .card{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px}
+  .card h3{font-size:11px; text-transform:uppercase; letter-spacing:1.1px; color:var(--dim); margin-bottom:8px}
+  #insp .hint{color:var(--dim); font-size:12px; line-height:1.5}
+  #insp .bname{font-size:14px; font-weight:700; margin-bottom:8px}
+  .prow{margin-bottom:9px}
+  .prow label{display:flex; justify-content:space-between; font-size:11.5px; color:var(--dim); margin-bottom:3px}
+  .prow label b{color:var(--text); font-weight:600}
+  .prow input[type=range]{width:100%; accent-color:var(--accent)}
+  .togglebtn{
+    width:100%; padding:6px; border-radius:7px; border:1px solid var(--line); cursor:pointer;
+    background:#1a2438; color:var(--dim); font-weight:700; letter-spacing:.5px;
+  }
+  .togglebtn.on{background:#0a3d2e; color:var(--ok); border-color:var(--ok)}
+  .actrow{display:flex; gap:6px; margin-top:10px}
+  .actrow .btn{flex:1; text-align:center}
+  #bom .bomrow{display:flex; justify-content:space-between; font-size:12px; padding:2.5px 0; color:var(--text)}
+  #bom .bomrow span:last-child{color:var(--dim)}
+  #bom .empty{color:var(--dim); font-size:12px}
+  footer{
+    flex:0 0 auto; padding:5px 14px; background:var(--panel); border-top:1px solid var(--line);
+    color:var(--dim); font-size:11px; letter-spacing:.2px;
+  }
+  kbd{background:#1a2438; border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:10px}
+  /* drag ghost */
+  #ghost{position:fixed; pointer-events:none; z-index:99; opacity:.85; display:none}
+  /* toast (non-blocking notice — native alert/confirm are blocked in embedded iframes) */
+  #toast{position:fixed; left:50%; bottom:44px; transform:translateX(-50%);
+    background:#1a2438; border:1px solid var(--line); color:var(--text);
+    padding:7px 14px; border-radius:8px; font-size:12.5px; opacity:0;
+    pointer-events:none; transition:opacity .25s; z-index:200}
+  #toast.show{opacity:1}
+  /* beam flow animation */
+  @keyframes flow { to { stroke-dashoffset:-28 } }
+  .flow{stroke-dasharray:6 22; animation:flow 1.1s linear infinite}
+  .blk{cursor:grab}
+  .blk.sel .cube{stroke:var(--sel); stroke-width:2}
+</style>
+</head>
+<body>
+<header>
+  <h1>Optics <span>Playground</span></h1>
+  <select id="presetSel" class="btn">
+    <option value="">Presets…</option>
+    <option value="michelson">Michelson interferometer</option>
+    <option value="mz">Mach–Zehnder interferometer</option>
+    <option value="pinhole">Pinhole diffraction</option>
+    <option value="fourier">4f Fourier filtering</option>
+    <option value="fluo">Epi-fluorescence path</option>
+    <option value="malus">Malus's law (2 polarizers)</option>
+    <option value="fluoem">Fluorescence emission spectrum</option>
+    <option value="fluoabs">Absorption spectrum (white light)</option>
+    <option value="raman">Raman spectroscopy (notch filter)</option>
+    <option value="spectrum">White LED spectrum</option>
+  </select>
+  <div class="spacer"></div>
+  <button class="btn" id="saveBtn">⬇ Save JSON</button>
+  <button class="btn" id="loadBtn">⬆ Load</button>
+  <input type="file" id="loadFile" accept=".json" style="display:none">
+  <button class="btn" id="pngBtn">🖼 PNG</button>
+  <button class="btn warn" id="clearBtn">✕ Clear</button>
+</header>
+
+<div id="main">
+  <div id="palette"></div>
+  <div id="boardarea">
+    <div id="boardwrap">
+      <div id="boardsize">
+        <div id="boardinner">
+          <svg id="board"></svg>
+          <div id="windows"></div>
+        </div>
+      </div>
+    </div>
+    <div id="zoomctl">
+      <button class="btn" id="zoomOut" title="Zoom out (−)">−</button>
+      <button class="btn" id="zoomPct" title="Reset to 100%">100%</button>
+      <button class="btn" id="zoomIn" title="Zoom in (+)">+</button>
+      <button class="btn" id="zoomFit" title="Fit the whole workspace (0)">⛶ Fit</button>
+    </div>
+  </div>
+  <div id="right">
+    <div class="card" id="insp"><h3>Inspector</h3><div class="hint">Drag a block from the palette onto the grid.<br><br>Click a block to edit its properties here.</div></div>
+    <div class="card" id="bomcard"><h3>Parts list (BOM)</h3><div id="bom"><div class="empty">No blocks placed.</div></div></div>
+    <div class="card" id="gridcard"><h3>Grid size</h3>
+      <div class="gridrow"><label>Columns (horizontal)</label><input type="number" id="gcols" min="4" max="40" value="16"></div>
+      <div class="gridrow"><label>Rows (vertical)</label><input type="number" id="grows" min="4" max="30" value="11"></div>
+      <div style="color:var(--dim);font-size:11px">1 cell = one 50 mm optics cube</div>
+    </div>
+  </div>
+</div>
+
+<footer>Drag from palette • drag blocks to move • click = select • <kbd>R</kbd>/double-click = rotate • <kbd>Del</kbd> = remove • grid cell = one 50 mm optics cube</footer>
+<div id="ghost"></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Optics Playground — single-file webapp
+   Grid-based (axis-aligned) qualitative optics simulator for planning
+   modular cube-style optical setups.
+   ===================================================================== */
+
+/* ------------------ constants & state ------------------ */
+let COLS = 16, ROWS = 11;                      // grid size (adjustable)
+const CS = 56;                                 // cell px (1 cell = 50 mm)
+let BW = COLS*CS, BH = ROWS*CS;
+let zoom = 1;
+const DX = [1,0,-1,0], DY = [0,1,0,-1];       // dirs: 0=E 1=S 2=W 3=N
+const MAP_BSLASH = [1,0,3,2];                  // '\' : E→S S→E W→N N→W
+const MAP_SLASH  = [3,2,1,0];                  // '/' : E→N S→W W→S N→E
+const MAX_RAYS = 600, MAX_DEPTH = 34, I_MIN = 5e-4;
+const BASE_W = 6;                              // stylized beam width px
+
+let state = { blocks: [] };                    // block: {id,type,c,r,rot,props}
+let nextId = 1;
+let selId = null;
+let segments = [];                             // traced beam segments for render
+
+/* ------------------ helpers ------------------ */
+const $  = s => document.querySelector(s);
+const el = (t,a={}) => { const n=document.createElementNS('http://www.w3.org/2000/svg',t);
+  for(const k in a) n.setAttribute(k,a[k]); return n; };
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let toastT=null;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 2400); }
+const fmt=(v,d=1)=>(+v).toFixed(d).replace(/\.0+$/,'');
+
+function wl2rgb(wl){ // 380–780 nm → [r,g,b]
+  let r=0,g=0,b=0;
+  if(wl<380) wl=380; if(wl>780) wl=780;
+  if(wl<440){r=-(wl-440)/60; b=1}
+  else if(wl<490){g=(wl-440)/50; b=1}
+  else if(wl<510){g=1; b=-(wl-510)/20}
+  else if(wl<580){r=(wl-510)/70; g=1}
+  else if(wl<645){r=1; g=-(wl-645)/65}
+  else r=1;
+  let f=1;
+  if(wl<420) f=.3+.7*(wl-380)/40;
+  else if(wl>700) f=.3+.7*(780-wl)/80;
+  const gm=x=>Math.pow(clamp(x*f,0,1),.8);
+  return [gm(r),gm(g),gm(b)];
+}
+function specColor(spec){ // weighted rgb of a spectrum → css color
+  let r=0,g=0,b=0,tot=0;
+  for(const s of spec){ const c=wl2rgb(s.wl); r+=c[0]*s.I; g+=c[1]*s.I; b+=c[2]*s.I; tot+=s.I; }
+  if(tot<=0) return '#fff';
+  const m=Math.max(r,g,b)||1;
+  return `rgb(${Math.round(255*r/m)},${Math.round(255*g/m)},${Math.round(255*b/m)})`;
+}
+const specI = spec => spec.reduce((a,s)=>a+s.I,0);
+const meanWl = spec => { const t=specI(spec); return t? spec.reduce((a,s)=>a+s.wl*s.I,0)/t : 550; };
+const sigm = x => 1/(1+Math.exp(-x));
+
+function ledSpec(bri){ // white LED: blue pump + phosphor hump
+  const pts=[[430,.45],[455,.95],[480,.55],[510,.62],[540,.85],[565,.95],[590,1],[615,.9],[640,.72],[665,.5],[690,.3]];
+  return pts.map(p=>({wl:p[0], I:p[1]*bri*.13}));
+}
+
+/* ------------------ block registry ------------------ */
+/* propSchema item: {k,label,type:'range'|'log'|'toggle',min,max,step,unit,fmt} */
+const DIAG = t => ['mirror45','bs','dichroic'].includes(t);
+
+const DEFS = {
+  laser:{ name:'Laser', cat:'Sources',
+    props:{on:true, wl:633, power:1},
+    schema:[{k:'on',label:'Emission',type:'toggle'},
+            {k:'wl',label:'Wavelength',type:'range',min:400,max:780,step:1,unit:'nm'},
+            {k:'power',label:'Power',type:'range',min:.05,max:1,step:.05,unit:'',fmt:v=>Math.round(v*100)+'%'}]},
+  led:{ name:'LED white light', cat:'Sources',
+    props:{on:true, bri:1},
+    schema:[{k:'on',label:'Emission',type:'toggle'},
+            {k:'bri',label:'Brightness',type:'range',min:.05,max:1,step:.05,unit:'',fmt:v=>Math.round(v*100)+'%'}]},
+  mirror45:{ name:'Mirror 45°', cat:'Beam steering', props:{}, schema:[] },
+  mirror:{ name:'Mirror (flat)', cat:'Beam steering', props:{}, schema:[],
+    note:'Reflects a beam straight back, but only when its face points into the beam — rotate (R) so the silver side meets the light.' },
+  bs:{ name:'Beam splitter', cat:'Beam steering',
+    props:{ratio:50},
+    schema:[{k:'ratio',label:'Reflectance',type:'range',min:10,max:90,step:5,unit:'%'}]},
+  dichroic:{ name:'Dichroic mirror', cat:'Beam steering',
+    props:{cut:505},
+    schema:[{k:'cut',label:'Cut-off (refl < λ < pass)',type:'range',min:420,max:700,step:5,unit:'nm'}]},
+  lens:{ name:'Lens', cat:'Shaping & filtering',
+    props:{f:100},
+    schema:[{k:'f',label:'Focal length',type:'range',min:-250,max:250,step:10,unit:'mm',
+             fmt:v=> v==0?'∞ (flat)':fmt(v)+' mm'}]},
+  object:{ name:'Object (test target)', cat:'Shaping & filtering',
+    props:{pattern:'grid', period:4},
+    schema:[{k:'pattern',label:'Pattern',type:'select',
+             opts:[['vlines','Vertical lines'],['hlines','Horizontal lines'],['grid','Grid (both)']]},
+            {k:'period',label:'Spatial frequency',type:'range',min:2,max:10,step:.5,unit:'lp/mm'}]},
+  spatialfilter:{ name:'Spatial filter', cat:'Shaping & filtering',
+    props:{shape:'vslit', w:1},
+    schema:[{k:'shape',label:'Filter shape (Fourier plane)',type:'select',
+             opts:[['hole','Pinhole — DC only'],['vslit','Vertical slit'],['hslit','Horizontal slit']]},
+            {k:'w',label:'Slit / hole width',type:'range',min:.1,max:5,step:.1,unit:'mm'}]},
+  pinhole:{ name:'Pinhole', cat:'Shaping & filtering',
+    props:{d:-1.3}, // log10(mm) → 0.05 mm
+    schema:[{k:'d',label:'Hole diameter',type:'range',min:-2,max:.3,step:.05,unit:'',
+             fmt:v=>{const mm=Math.pow(10,v); return mm<1? Math.round(mm*1000)+' µm' : fmt(mm,2)+' mm';}}]},
+  iris:{ name:'Iris / aperture', cat:'Shaping & filtering',
+    props:{d:5},
+    schema:[{k:'d',label:'Opening',type:'range',min:.5,max:12,step:.5,unit:'mm'}]},
+  nd:{ name:'ND filter', cat:'Shaping & filtering',
+    props:{od:1},
+    schema:[{k:'od',label:'Optical density',type:'range',min:0,max:4,step:.1,unit:'OD'}]},
+  longpass:{ name:'Longpass filter', cat:'Shaping & filtering',
+    props:{cut:500},
+    schema:[{k:'cut',label:'Cut-on λ',type:'range',min:400,max:750,step:5,unit:'nm'}]},
+  shortpass:{ name:'Shortpass filter', cat:'Shaping & filtering',
+    props:{cut:600},
+    schema:[{k:'cut',label:'Cut-off λ',type:'range',min:400,max:750,step:5,unit:'nm'}]},
+  bandpass:{ name:'Bandpass filter', cat:'Shaping & filtering',
+    props:{center:532, width:40},
+    schema:[{k:'center',label:'Center λ',type:'range',min:400,max:750,step:5,unit:'nm'},
+            {k:'width',label:'FWHM',type:'range',min:10,max:120,step:5,unit:'nm'}]},
+  notch:{ name:'Notch filter', cat:'Shaping & filtering',
+    props:{center:532, width:20},
+    schema:[{k:'center',label:'Blocked λ',type:'range',min:400,max:800,step:1,unit:'nm'},
+            {k:'width',label:'Notch width (FWHM)',type:'range',min:5,max:40,step:1,unit:'nm'}]},
+  polarizer:{ name:'Polarizer', cat:'Shaping & filtering',
+    props:{ang:0},
+    schema:[{k:'ang',label:'Axis angle',type:'range',min:0,max:180,step:5,unit:'°'}]},
+  grating:{ name:'Diffraction grating', cat:'Shaping & filtering', props:{}, schema:[] },
+  sample:{ name:'Fluorescent sample', cat:'Shaping & filtering',
+    props:{em:520},
+    schema:[{k:'em',label:'Emission peak',type:'range',min:440,max:700,step:5,unit:'nm'}]},
+  raman:{ name:'Raman sample', cat:'Shaping & filtering',
+    props:{fluor:false},
+    schema:[{k:'fluor',label:'Fluorescence background',type:'toggle'}],
+    note:'Scatters weak Stokes-shifted Raman lines from the incident laser. Toggle the fluorescence background to see it swamp the Raman signal.' },
+  screen:{ name:'Screen', cat:'Detection', props:{}, schema:[] },
+  pd:{ name:'Photodiode', cat:'Detection', props:{}, schema:[] },
+  spectro:{ name:'Spectrometer', cat:'Detection', props:{}, schema:[] },
+  spcm:{ name:'Photon counter (SPCM)', cat:'Detection', props:{}, schema:[] },
+  blank:{ name:'Blank cube', cat:'Misc', props:{}, schema:[] },
+};
+const CATS = ['Sources','Beam steering','Shaping & filtering','Detection','Misc'];
+const DETECTORS = ['screen','pd','spectro','spcm'];
+
+/* ------------------ block SVG drawing ------------------ */
+function blockSVG(type, props, rot, size){
+  // returns inner SVG markup for a block, drawn in a size×size box
+  const s=size, h=s/2, q=s/4;
+  const cube=`<rect class="cube" x="2" y="2" width="${s-4}" height="${s-4}" rx="8"
+     fill="#161f33" fill-opacity=".82" stroke="#3b4a6b" stroke-width="1.2"/>`;
+  const rotG=(deg,inner)=>`<g transform="rotate(${deg} ${h} ${h})">${inner}</g>`;
+  let g='';
+  switch(type){
+    case 'laser':{
+      const col=specColor([{wl:props.wl,I:1}]);
+      g=rotG(rot*90,`
+        <rect x="${q*.7}" y="${h-q*.55}" width="${s*.52}" height="${q*1.1}" rx="4" fill="#2a3450" stroke="#556" stroke-width="1"/>
+        <rect x="${q*.7+s*.52}" y="${h-3.5}" width="${q*.6}" height="7" fill="#444f6e"/>
+        <circle cx="${q*1.25}" cy="${h}" r="3.6" fill="${props.on?col:'#333'}" ${props.on?`stroke="#fff" stroke-width=".8"`:''}/>`)
+        +`<text x="${h}" y="${s-6}" font-size="${s*.155}" fill="${col}" text-anchor="middle" font-weight="700">${props.wl||''} nm</text>`;
+      break;}
+    case 'led':{
+      g=rotG(rot*90,`
+        <rect x="${q*.8}" y="${h-q*.7}" width="${q*.9}" height="${q*1.4}" rx="3" fill="#2a3450"/>
+        <circle cx="${h+q*.35}" cy="${h}" r="${q*.72}" fill="${props.on?'#fffbe8':'#3a3f4d'}" stroke="#889" stroke-width="1"/>
+        ${props.on?`<circle cx="${h+q*.35}" cy="${h}" r="${q*1.05}" fill="none" stroke="#fffbe8" stroke-opacity=".35" stroke-width="2"/>`:''}`);
+      break;}
+    case 'mirror45':{
+      const sl = rot%2? -1: 1; // rot even = '\' (E→S), rot odd = '/' (E→N) — matches trace maps
+      g=`<g transform="translate(${h} ${h}) scale(1 ${sl}) translate(${-h} ${-h})">
+         <line x1="${q*.8}" y1="${q*.8}" x2="${s-q*.8}" y2="${s-q*.8}" stroke="#cdd7ea" stroke-width="5" stroke-linecap="round"/>
+         <line x1="${q*.8}" y1="${q*.8}" x2="${s-q*.8}" y2="${s-q*.8}" stroke="#7f8db1" stroke-width="8.5" stroke-linecap="round" stroke-opacity=".3"/></g>`;
+      break;}
+    case 'mirror':{
+      g=rotG(rot*90,`
+        <rect x="${s-q*1.15}" y="${q*.7}" width="6" height="${s-q*1.4}" rx="2" fill="#cdd7ea"/>
+        <rect x="${s-q*1.15+6}" y="${q*.7}" width="4" height="${s-q*1.4}" fill="#59637f"/>`);
+      break;}
+    case 'bs':{
+      const sl = rot%2? -1: 1;
+      g=`<rect x="${q*.85}" y="${q*.85}" width="${s-q*1.7}" height="${s-q*1.7}" fill="#4cc9f0" fill-opacity=".10" stroke="#4cc9f0" stroke-opacity=".35" stroke-width="1"/>
+         <g transform="translate(${h} ${h}) scale(1 ${sl}) translate(${-h} ${-h})">
+         <line x1="${q*.85}" y1="${q*.85}" x2="${s-q*.85}" y2="${s-q*.85}" stroke="#9fdcf5" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="5 3"/></g>`;
+      break;}
+    case 'dichroic':{
+      const sl = rot%2? -1: 1;
+      const cR=specColor([{wl:Math.max(420,props.cut-40),I:1}]), cT=specColor([{wl:Math.min(700,props.cut+60),I:1}]);
+      g=`<g transform="translate(${h} ${h}) scale(1 ${sl}) translate(${-h} ${-h})">
+         <line x1="${q*.8}" y1="${q*.8}" x2="${h}" y2="${h}" stroke="${cR}" stroke-width="4.5" stroke-linecap="round"/>
+         <line x1="${h}" y1="${h}" x2="${s-q*.8}" y2="${s-q*.8}" stroke="${cT}" stroke-width="4.5" stroke-linecap="round"/></g>`;
+      break;}
+    case 'lens':{
+      const conv = props.f>=0;
+      g=rotG((rot%2)*90, conv
+        ? `<path d="M ${h} ${q*.75} C ${h+q*.95} ${q*1.6} ${h+q*.95} ${s-q*1.6} ${h} ${s-q*.75}
+                   C ${h-q*.95} ${s-q*1.6} ${h-q*.95} ${q*1.6} ${h} ${q*.75} Z"
+             fill="#8ecdf3" fill-opacity=".25" stroke="#a8d8f5" stroke-width="1.4"/>`
+        : `<path d="M ${h-q*.55} ${q*.75} L ${h+q*.55} ${q*.75} C ${h+q*.12} ${q*1.8} ${h+q*.12} ${s-q*1.8} ${h+q*.55} ${s-q*.75}
+                   L ${h-q*.55} ${s-q*.75} C ${h-q*.12} ${s-q*1.8} ${h-q*.12} ${q*1.8} ${h-q*.55} ${q*.75} Z"
+             fill="#8ecdf3" fill-opacity=".25" stroke="#a8d8f5" stroke-width="1.4"/>`);
+      break;}
+    case 'object':{
+      const p=props.pattern;
+      let lines='';
+      if(p!=='hlines') for(let i=-1;i<=1;i++)
+        lines+=`<line x1="${h+i*8}" y1="${h-q*.95}" x2="${h+i*8}" y2="${h+q*.95}" stroke="#dbe4f5" stroke-width="2.2"/>`;
+      if(p!=='vlines') for(let i=-1;i<=1;i++)
+        lines+=`<line x1="${h-q*.95}" y1="${h+i*8}" x2="${h+q*.95}" y2="${h+i*8}" stroke="#dbe4f5" stroke-width="2.2"/>`;
+      g=`<rect x="${h-q*1.15}" y="${h-q*1.15}" width="${q*2.3}" height="${q*2.3}" rx="3" fill="#0a0e18" stroke="#4a5878" stroke-width="1.2"/>`+lines;
+      break;}
+    case 'spatialfilter':{
+      const w=clamp(props.w,.1,5), sw=2+w*1.6;
+      let hole;
+      if(props.shape==='hole') hole=`<circle cx="${h}" cy="${h}" r="${1.5+w}" fill="#dbe4f5"/>`;
+      else if(props.shape==='vslit') hole=`<rect x="${h-sw/2}" y="${h-q*.95}" width="${sw}" height="${q*1.9}" rx="1" fill="#dbe4f5"/>`;
+      else hole=`<rect x="${h-q*.95}" y="${h-sw/2}" width="${q*1.9}" height="${sw}" rx="1" fill="#dbe4f5"/>`;
+      g=`<rect x="${h-q*1.15}" y="${h-q*1.15}" width="${q*2.3}" height="${q*2.3}" rx="4" fill="#131a2c" stroke="#4a5878" stroke-width="1.2"/>`+hole;
+      break;}
+    case 'pinhole':{
+      const mm=Math.pow(10, props.d);
+      const hr=clamp(1+mm*2.2, 1, 6);
+      g=rotG((rot%2)*90,`
+        <rect x="${h-3.5}" y="${q*.7}" width="7" height="${s-q*1.4}" rx="2" fill="#0a0e18" stroke="#4a5878" stroke-width="1"/>
+        <circle cx="${h}" cy="${h}" r="${hr}" fill="#dbe4f5"/>`);
+      break;}
+    case 'iris':{
+      g=rotG((rot%2)*90,`
+        <circle cx="${h}" cy="${h}" r="${q*1.35}" fill="#0a0e18" stroke="#4a5878" stroke-width="1.5"/>
+        <circle cx="${h}" cy="${h}" r="${clamp(props.d,0.5,12)/12*q*1.1+2}" fill="#1c2333" stroke="#8494b3" stroke-width="1"/>
+        ${[0,60,120,180,240,300].map(a=>`<line x1="${h+Math.cos(a*Math.PI/180)*(q*1.3)}" y1="${h+Math.sin(a*Math.PI/180)*(q*1.3)}"
+           x2="${h+Math.cos((a+35)*Math.PI/180)*(clamp(props.d,0.5,12)/12*q*1.1+2)}" y2="${h+Math.sin((a+35)*Math.PI/180)*(clamp(props.d,0.5,12)/12*q*1.1+2)}"
+           stroke="#59637f" stroke-width="1.4"/>`).join('')}`);
+      break;}
+    case 'nd':{
+      const op=.25+props.od/4*.6;
+      g=rotG((rot%2)*90,`<circle cx="${h}" cy="${h}" r="${q*1.3}" fill="#222" fill-opacity="${op}" stroke="#8a8f9c" stroke-width="1.6"/>
+        <text x="${h}" y="${h+1}" font-size="${s*.17}" fill="#aab" text-anchor="middle" dominant-baseline="middle">OD${fmt(props.od)}</text>`);
+      break;}
+    case 'longpass': case 'shortpass':{
+      const c = specColor([{wl: type==='longpass'? Math.min(720,props.cut+70): Math.max(420,props.cut-70), I:1}]);
+      g=rotG((rot%2)*90,`<circle cx="${h}" cy="${h}" r="${q*1.3}" fill="${c}" fill-opacity=".3" stroke="${c}" stroke-width="1.6"/>
+        <text x="${h}" y="${h+1}" font-size="${s*.16}" fill="${c}" text-anchor="middle" dominant-baseline="middle" font-weight="700">${type==='longpass'?'LP':'SP'}</text>`);
+      break;}
+    case 'bandpass':{
+      const c=specColor([{wl:props.center,I:1}]);
+      g=rotG((rot%2)*90,`<circle cx="${h}" cy="${h}" r="${q*1.3}" fill="${c}" fill-opacity=".26" stroke="${c}" stroke-width="1.6"/>
+        <text x="${h}" y="${h+1}" font-size="${s*.16}" fill="${c}" text-anchor="middle" dominant-baseline="middle" font-weight="700">BP</text>`);
+      break;}
+    case 'notch':{
+      const c=specColor([{wl:props.center,I:1}]);
+      g=rotG((rot%2)*90,`<circle cx="${h}" cy="${h}" r="${q*1.3}" fill="#31405f" fill-opacity=".35" stroke="#aab6cf" stroke-width="1.6"/>
+        <circle cx="${h}" cy="${h}" r="5.5" fill="${c}"/>
+        <line x1="${h-8}" y1="${h+8}" x2="${h+8}" y2="${h-8}" stroke="#0b0f1a" stroke-width="3.4"/>
+        <line x1="${h-7}" y1="${h+7}" x2="${h+7}" y2="${h-7}" stroke="#e6ecf8" stroke-width="1.6"/>`);
+      break;}
+    case 'raman':{
+      g=`<rect x="${h-q*.75}" y="${q*.75}" width="${q*1.5}" height="${s-q*1.5}" rx="3" fill="#101828" stroke="#5d6d92" stroke-width="1.2"/>
+         <rect x="${h-q*.75+2.5}" y="${h-2}" width="${q*1.5-5}" height="${s/2-q*.75-2}" rx="2" fill="#8b5cf6" fill-opacity=".5"/>
+         <line x1="${h-6}" y1="${h-7}" x2="${h-6}" y2="${h-13}" stroke="#c4b5fd" stroke-width="1.6"/>
+         <line x1="${h}" y1="${h-7}" x2="${h}" y2="${h-17}" stroke="#c4b5fd" stroke-width="1.6"/>
+         <line x1="${h+6}" y1="${h-7}" x2="${h+6}" y2="${h-11}" stroke="#c4b5fd" stroke-width="1.6"/>`;
+      break;}
+    case 'polarizer':{
+      g=`<circle cx="${h}" cy="${h}" r="${q*1.3}" fill="#31405f" fill-opacity=".4" stroke="#8494b3" stroke-width="1.4"/>
+         <g transform="rotate(${props.ang} ${h} ${h})">
+           ${[-2,-1,0,1,2].map(i=>`<line x1="${h+i*5}" y1="${h-q*1.05}" x2="${h+i*5}" y2="${h+q*1.05}" stroke="#c8d4ec" stroke-width="1.1"/>`).join('')}
+         </g>`;
+      break;}
+    case 'grating':{
+      g=rotG((rot%2)*90,`
+        <rect x="${h-4}" y="${q*.7}" width="8" height="${s-q*1.4}" rx="2" fill="#131a2c" stroke="#4a5878"/>
+        ${[0,1,2,3,4,5,6].map(i=>`<line x1="${h-3}" y1="${q*.95+i*(s-q*1.9)/6}" x2="${h+3}" y2="${q*.95+i*(s-q*1.9)/6}" stroke="${specColor([{wl:430+i*45,I:1}])}" stroke-width="1.4"/>`).join('')}`);
+      break;}
+    case 'sample':{
+      const c=specColor([{wl:props.em,I:1}]);
+      g=`<rect x="${h-q*.75}" y="${q*.75}" width="${q*1.5}" height="${s-q*1.5}" rx="3" fill="#101828" stroke="#5d6d92" stroke-width="1.2"/>
+         <rect x="${h-q*.75+2.5}" y="${h-2}" width="${q*1.5-5}" height="${s/2-q*.75-2}" rx="2" fill="${c}" fill-opacity=".55"/>`;
+      break;}
+    case 'screen':{
+      g=rotG((rot%2)*90,`
+        <rect x="${h-3.5}" y="${q*.6}" width="7" height="${s-q*1.2}" rx="2" fill="#e8ecf5" stroke="#9aa5c0" stroke-width="1"/>`);
+      break;}
+    case 'pd':{
+      g=rotG(rot*90,`
+        <rect x="${q*.9}" y="${h-q*.85}" width="${s-q*1.9}" height="${q*1.7}" rx="5" fill="#141a2a" stroke="#4a5878" stroke-width="1.2"/>
+        <circle cx="${q*1.35}" cy="${h}" r="4.5" fill="#26314e" stroke="#7f8db1"/>
+        <text x="${h+q*.3}" y="${h+1}" font-size="${s*.18}" fill="#8fb4e8" text-anchor="middle" dominant-baseline="middle" font-weight="700">PD</text>`);
+      break;}
+    case 'spectro':{
+      g=rotG(rot*90,`
+        <rect x="${q*.8}" y="${h-q*.9}" width="${s-q*1.7}" height="${q*1.8}" rx="5" fill="#141a2a" stroke="#4a5878" stroke-width="1.2"/>
+        ${[0,1,2,3,4].map(i=>`<rect x="${q*1.25+i*5.5}" y="${h-q*.35}" width="4" height="${q*.7}" fill="${specColor([{wl:440+i*60,I:1}])}"/>`).join('')}`);
+      break;}
+    case 'spcm':{
+      g=rotG(rot*90,`
+        <rect x="${q*.8}" y="${h-q*.9}" width="${s-q*1.7}" height="${q*1.8}" rx="5" fill="#141a2a" stroke="#4a5878" stroke-width="1.2"/>
+        <polyline points="${q*1.1},${h+4} ${q*1.6},${h+4} ${q*1.6},${h-6} ${q*1.85},${h-6} ${q*1.85},${h+4}
+          ${q*2.5},${h+4} ${q*2.5},${h-6} ${q*2.75},${h-6} ${q*2.75},${h+4} ${q*3.1},${h+4}"
+          fill="none" stroke="#06d6a0" stroke-width="1.6"/>`);
+      break;}
+    case 'blank':{
+      g=`<rect x="8" y="8" width="${s-16}" height="${s-16}" rx="6" fill="none" stroke="#33405f" stroke-width="1.2" stroke-dasharray="4 4"/>`;
+      break;}
+  }
+  return cube+g;
+}
+
+/* ------------------ tracing engine ------------------ */
+function blockAt(c,r){ return state.blocks.find(b=>b.c===c && b.r===r); }
+
+function newRay(o){ return Object.assign({
+  c:0,r:0,dir:0, spec:[], coh:false, src:0, path:0,
+  w:BASE_W, slope:0, pol:null, diff:0, disp:false, mask:null, off:0, depth:0}, o); }
+
+function trace(){
+  segments = [];
+  for(const b of state.blocks) if(DETECTORS.includes(b.type)) b._hits=[];
+  const queue=[];
+  for(const b of state.blocks){
+    if(b.type==='laser' && b.props.on)
+      queue.push(newRay({c:b.c,r:b.r,dir:b.rot%4, spec:[{wl:b.props.wl,I:b.props.power}], coh:true, src:b.id}));
+    if(b.type==='led' && b.props.on)
+      queue.push(newRay({c:b.c,r:b.r,dir:b.rot%4, spec:ledSpec(b.props.bri), coh:false, src:b.id, w:BASE_W*1.5}));
+  }
+  let count=0;
+  while(queue.length && count<MAX_RAYS){
+    const ray=queue.shift(); count++;
+    if(specI(ray.spec)<I_MIN || ray.depth>MAX_DEPTH) continue;
+    // march
+    let c=ray.c, r=ray.r, len=0, hitB=null;
+    while(true){
+      const nc=c+DX[ray.dir], nr=r+DY[ray.dir];
+      if(nc<0||nc>=COLS||nr<0||nr>=ROWS){ // leaves grid: extend to border
+        len += .55; c=nc; r=nr; break;
+      }
+      c=nc; r=nr; len++;
+      const b=blockAt(c,r);
+      if(b && b.type!=='blank'){ hitB=b; break; }
+    }
+    // record segment (from ray cell center → hit cell center / border)
+    // retro-reflected beams (off) draw slightly offset so the return path is visible
+    const op=(ray.off||0)*3.2, ox=-DY[ray.dir]*op, oy=DX[ray.dir]*op;
+    const x1=(ray.c+.5)*CS+ox, y1=(ray.r+.5)*CS+oy;
+    const x2=x1+DX[ray.dir]*len*CS, y2=y1+DY[ray.dir]*len*CS;
+    const wEnd = ray.w + ray.slope*len;
+    segments.push({x1,y1,x2,y2, dir:ray.dir, spec:ray.spec, w1:ray.w, w2:wEnd,
+                   disp:ray.disp, coh:ray.coh, I:specI(ray.spec)});
+    if(!hitB) continue;
+    // interact
+    const arrive = Object.assign({}, ray, {c,r, path:ray.path+len, w:Math.abs(wEnd),
+      wSigned:wEnd, depth:ray.depth+1, spec:ray.spec.map(s=>({...s}))});
+    const outs = interact(hitB, arrive);
+    for(const o of outs) if(specI(o.spec)>I_MIN) queue.push(o);
+  }
+  renderBeams();
+  updateWindows();
+  renderBOM();
+}
+
+function interact(b, ray){
+  const P=b.props, out=[];
+  const cont = mod => out.push(Object.assign(newRay({}), ray, {slope:ray.slope, w:ray.w}, mod||{}));
+  switch(b.type){
+    case 'mirror45':{
+      const map = b.rot%2? MAP_SLASH: MAP_BSLASH;
+      cont({dir:map[ray.dir]});
+      break;}
+    case 'mirror':{
+      // reflects only when the face points into the beam: rot = direction of the beam it accepts
+      if(ray.dir === b.rot%4) cont({dir:(ray.dir+2)%4, slope:-ray.slope, off:1});
+      // hit from the back or side: beam is blocked
+      break;}
+    case 'bs':{
+      const map = b.rot%2? MAP_SLASH: MAP_BSLASH;
+      const Rf=P.ratio/100;
+      cont({dir:map[ray.dir], spec:ray.spec.map(s=>({wl:s.wl,I:s.I*Rf}))});
+      cont({spec:ray.spec.map(s=>({wl:s.wl,I:s.I*(1-Rf)}))});
+      break;}
+    case 'dichroic':{
+      const map = b.rot%2? MAP_SLASH: MAP_BSLASH;
+      const tr=[], rf=[];
+      for(const s of ray.spec){
+        const T=sigm((s.wl-P.cut)/8);
+        if(s.I*T>1e-5) tr.push({wl:s.wl,I:s.I*T});
+        if(s.I*(1-T)>1e-5) rf.push({wl:s.wl,I:s.I*(1-T)});
+      }
+      if(tr.length) cont({spec:tr});
+      if(rf.length) cont({dir:map[ray.dir], spec:rf});
+      break;}
+    case 'lens':{
+      const fCells = P.f/50; // 50 mm per cell
+      let slope = ray.slope;
+      if(P.f!==0) slope = ray.slope - (ray.wSigned??ray.w)/fCells;
+      slope = clamp(slope, -18, 18);
+      // each lens pass toggles image space <-> Fourier space for a patterned beam
+      const m = ray.mask? {...ray.mask, fstage:(ray.mask.fstage||0)+1} : null;
+      cont({slope, w:ray.wSigned??ray.w, mask:m});
+      break;}
+    case 'object':{
+      cont({mask:{v:(P.pattern!=='hlines')?1:0, h:(P.pattern!=='vlines')?1:0,
+                  period:P.period, fstage:0},
+            spec:ray.spec.map(s=>({wl:s.wl,I:s.I*.7}))});
+      break;}
+    case 'spatialfilter':{
+      const leak=clamp((P.w-0.3)/4.7, 0, 1);  // narrow slit/hole -> hard cut, wide -> passes all
+      let m=ray.mask? {...ray.mask}: null, t=1;
+      if(m){
+        if(P.shape==='hole'){ m.v*=leak; m.h*=leak; }        // DC only
+        else if(P.shape==='vslit'){ m.v*=leak; }             // passes ky column -> keeps horizontal lines
+        else { m.h*=leak; }                                  // passes kx row  -> keeps vertical lines
+        t=.85;
+      } else {
+        t = P.shape==='hole'? clamp(.15+P.w/5,.15,.9) : .8;  // plain beam: acts as an aperture
+      }
+      cont({mask:m, spec:ray.spec.map(s=>({wl:s.wl,I:s.I*t}))});
+      break;}
+    case 'pinhole':{
+      const mm=Math.pow(10,P.d);
+      const lam=meanWl(ray.spec);
+      let w=Math.min(ray.w, clamp(1.5+mm*4, 1.5, BASE_W*2));
+      const tI = clamp(w/Math.max(ray.w,.001),0,1)*0.9;
+      let slope=0, diff=ray.diff;
+      if(mm<0.5){ // diffraction regime
+        slope = clamp(0.8*(lam/1000)/mm, 0, 14);
+        diff = Math.max(diff, (lam/1000)/mm);
+      }
+      cont({w, slope, diff, spec:ray.spec.map(s=>({wl:s.wl,I:s.I*tI}))});
+      break;}
+    case 'iris':{
+      const wmax=clamp(1.5+P.d*1.1, 1.5, 16);
+      const w=Math.min(ray.w,wmax);
+      const tI=clamp(w/Math.max(ray.w,.001),0,1);
+      cont({w, spec:ray.spec.map(s=>({wl:s.wl,I:s.I*tI}))});
+      break;}
+    case 'nd':{
+      const t=Math.pow(10,-P.od);
+      cont({spec:ray.spec.map(s=>({wl:s.wl,I:s.I*t}))});
+      break;}
+    case 'longpass':{
+      cont({spec:ray.spec.map(s=>({wl:s.wl,I:s.I*sigm((s.wl-P.cut)/6)})).filter(s=>s.I>1e-5)});
+      break;}
+    case 'shortpass':{
+      cont({spec:ray.spec.map(s=>({wl:s.wl,I:s.I*sigm((P.cut-s.wl)/6)})).filter(s=>s.I>1e-5)});
+      break;}
+    case 'bandpass':{
+      const sg=P.width/2.355;
+      cont({spec:ray.spec.map(s=>({wl:s.wl,I:s.I*Math.exp(-((s.wl-P.center)**2)/(2*sg*sg))})).filter(s=>s.I>1e-5)});
+      break;}
+    case 'notch':{
+      const sgm=P.width/2.355;
+      cont({spec:ray.spec.map(s=>({wl:s.wl,
+              I:s.I*(1-0.9995*Math.exp(-((s.wl-P.center)**2)/(2*sgm*sgm)))}))
+            .filter(s=>s.I>1e-7)});
+      break;}
+    case 'raman':{
+      const exWl=meanWl(ray.spec), exI=specI(ray.spec);
+      cont({spec:ray.spec.map(s=>({wl:s.wl,I:s.I*.9}))});   // transmitted excitation
+      const base=exI*.004;                                   // Raman is ~1000x weaker
+      if(base>1e-5) for(let d=0;d<4;d++){
+        const rSpec=[[18,.6],[30,1],[48,.75]]                // Stokes lines (fixed shifts, qualitative)
+          .map(([dw,a])=>({wl:Math.min(exWl+dw,800), I:base*a}));
+        out.push(newRay({c:ray.c,r:ray.r,dir:d, spec:rSpec, coh:true, src:b.id*100000+d,
+          path:ray.path, depth:ray.depth+1, w:BASE_W*.8}));
+        if(P.fluor){
+          const fSpec=[];
+          for(let k=0;k<6;k++) fSpec.push({wl:Math.min(exWl+15+k*24,800), I:base*5*Math.exp(-k*.35)});
+          out.push(newRay({c:ray.c,r:ray.r,dir:d, spec:fSpec, coh:false, src:b.id*100000+50+d,
+            path:ray.path, depth:ray.depth+1, w:BASE_W}));
+        }
+      }
+      break;}
+    case 'polarizer':{
+      let t, pol=P.ang;
+      if(ray.pol===null) t=.5;
+      else { const d=(ray.pol-P.ang)*Math.PI/180; t=Math.cos(d)**2; }
+      cont({pol, spec:ray.spec.map(s=>({wl:s.wl,I:s.I*t})).filter(s=>s.I>1e-5)});
+      break;}
+    case 'grating':{
+      cont({disp:true, spec:ray.spec.map(s=>({wl:s.wl,I:s.I*.7}))});
+      break;}
+    case 'sample':{
+      // absorb short-λ light, emit fluorescence at P.em in all 4 directions
+      let absorbed=0; const tr=[];
+      for(const s of ray.spec){
+        const a=Math.exp(-((s.wl-(P.em-45))**2)/(2*32*32))*.92;
+        absorbed+=s.I*a;
+        const rem=s.I*(1-a); if(rem>1e-5) tr.push({wl:s.wl,I:rem});
+      }
+      if(tr.length) cont({spec:tr});
+      const eI=absorbed*.30/4;
+      if(eI>I_MIN) for(let d=0; d<4; d++){
+        out.push(newRay({c:ray.c,r:ray.r,dir:d, spec:[{wl:P.em,I:eI}], coh:false,
+          src:b.id*100000, path:ray.path, depth:ray.depth+1, w:BASE_W*.9}));
+      }
+      break;}
+    case 'screen': case 'pd': case 'spectro': case 'spcm':{
+      b._hits.push({spec:ray.spec, I:specI(ray.spec), coh:ray.coh, src:ray.src,
+                    path:ray.path, diff:ray.diff, disp:ray.disp, mask:ray.mask, w:ray.w, dir:ray.dir});
+      break;}
+    case 'laser': case 'led': break; // absorbed
+    default: cont();
+  }
+  return out;
+}
+
+/* ------------------ board render ------------------ */
+const board=$('#board');
+function sizeBoard(){
+  board.setAttribute('width',BW); board.setAttribute('height',BH);
+  board.setAttribute('viewBox',`0 0 ${BW} ${BH}`);
+}
+sizeBoard();
+
+const defsEl=el('defs');
+defsEl.innerHTML=`
+  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="3.4"/>
+  </filter>`;
+board.appendChild(defsEl);
+
+const gridLayer=el('g'), beamLayer=el('g'), blockLayer=el('g');
+board.append(gridLayer, beamLayer, blockLayer);
+
+function drawGrid(){
+  gridLayer.innerHTML='';
+  for(let i=0;i<=COLS;i++) gridLayer.appendChild(el('line',{x1:i*CS,y1:0,x2:i*CS,y2:BH,stroke:'#1c2740','stroke-width':1}));
+  for(let j=0;j<=ROWS;j++) gridLayer.appendChild(el('line',{x1:0,y1:j*CS,x2:BW,y2:j*CS,stroke:'#1c2740','stroke-width':1}));
+  for(let i=1;i<COLS;i++) for(let j=1;j<ROWS;j++)
+    gridLayer.appendChild(el('circle',{cx:i*CS,cy:j*CS,r:1.4,fill:'#2b3a5e'}));
+}
+drawGrid();
+
+/* ------------------ zoom & grid size ------------------ */
+const boardsize=$('#boardsize'), boardinner=$('#boardinner');
+function applyZoom(){
+  boardsize.style.width=(BW*zoom+44)+'px';
+  boardsize.style.height=(BH*zoom+44)+'px';
+  boardinner.style.transform=`scale(${zoom})`;
+  $('#zoomPct').textContent=Math.round(zoom*100)+'%';
+}
+function setZoom(z){ zoom=clamp(z,.2,3); applyZoom(); }
+function fitZoom(){
+  const wr=$('#boardwrap');
+  setZoom(Math.min((wr.clientWidth-46)/BW,(wr.clientHeight-46)/BH));
+}
+$('#zoomIn').addEventListener('click',()=>setZoom(zoom*1.2));
+$('#zoomOut').addEventListener('click',()=>setZoom(zoom/1.2));
+$('#zoomFit').addEventListener('click',fitZoom);
+$('#zoomPct').addEventListener('click',()=>setZoom(1));
+$('#boardwrap').addEventListener('wheel',ev=>{
+  if(!ev.ctrlKey && !ev.metaKey) return;
+  ev.preventDefault(); setZoom(zoom*(ev.deltaY<0? 1.1: 1/1.1));
+},{passive:false});
+applyZoom();
+
+function syncGridInputs(){ $('#gcols').value=COLS; $('#grows').value=ROWS; }
+function setGridSize(c,r,silent){
+  c=clamp(Math.round(c)||COLS,4,40); r=clamp(Math.round(r)||ROWS,4,30);
+  if(c===COLS && r===ROWS){ syncGridInputs(); return; }
+  const outside=state.blocks.filter(b=>b.c>=c || b.r>=r);
+  if(outside.length){
+    state.blocks=state.blocks.filter(b=>b.c<c && b.r<r);
+    if(outside.some(b=>b.id===selId)) selId=null;
+    if(!silent) toast(`${outside.length} block(s) outside the new grid were removed`);
+  }
+  COLS=c; ROWS=r; BW=COLS*CS; BH=ROWS*CS;
+  sizeBoard(); drawGrid(); applyZoom(); commit(); renderInspector(); syncGridInputs();
+}
+$('#gcols').addEventListener('change',()=>setGridSize(+$('#gcols').value, ROWS));
+$('#grows').addEventListener('change',()=>setGridSize(COLS, +$('#grows').value));
+
+function renderBlocks(){
+  blockLayer.innerHTML='';
+  for(const b of state.blocks){
+    const g=el('g',{class:'blk'+(b.id===selId?' sel':''), 'data-id':b.id,
+      transform:`translate(${b.c*CS} ${b.r*CS})`});
+    g.innerHTML = blockSVG(b.type, b.props, b.rot, CS);
+    const t=el('title'); t.textContent=DEFS[b.type].name; g.appendChild(t);
+    blockLayer.appendChild(g);
+  }
+}
+
+function renderBeams(){
+  beamLayer.innerHTML='';
+  for(const sg of segments){
+    const col=specColor(sg.spec);
+    const op=clamp(.25+sg.I*.75, .12, 1);
+    const wAvg=clamp((Math.abs(sg.w1)+Math.abs(sg.w2))/2, 1, 22);
+    if(sg.disp){
+      // dispersed beam: 0th order straight + ±1st orders, one per wavelength ACTUALLY in the spectrum
+      // (a laser fans into same-colour orders; broadband light into a rainbow)
+      const L=Math.hypot(sg.x2-sg.x1, sg.y2-sg.y1);
+      const px=-DY[sg.dir], py=DX[sg.dir]; // perpendicular
+      const Imax=Math.max(...sg.spec.map(s=>s.I))||1;
+      beamLayer.appendChild(el('line',{x1:sg.x1,y1:sg.y1,x2:sg.x2,y2:sg.y2, stroke:col,
+        'stroke-width':2,'stroke-opacity':op*.45,'stroke-linecap':'round'}));
+      for(const s of sg.spec){
+        const c=specColor([{wl:s.wl,I:1}]);
+        const o=L*(0.04+((s.wl-400)/380)*0.12);   // longer λ diffracts further
+        const a=clamp(op*.85*(s.I/Imax),.06,1);
+        for(const sgn of [1,-1])
+          beamLayer.appendChild(el('line',{x1:sg.x1,y1:sg.y1, x2:sg.x2+px*o*sgn, y2:sg.y2+py*o*sgn,
+            stroke:c,'stroke-width':2.2,'stroke-opacity':a,'stroke-linecap':'round'}));
+      }
+      continue;
+    }
+    const taper = Math.abs(Math.abs(sg.w1)-Math.abs(sg.w2))>1.2;
+    if(taper){
+      // possibly crosses focus (w changes sign)
+      const segs=[];
+      if(sg.w1*sg.w2<0){
+        const t=Math.abs(sg.w1)/(Math.abs(sg.w1)+Math.abs(sg.w2));
+        const mx=sg.x1+(sg.x2-sg.x1)*t, my=sg.y1+(sg.y2-sg.y1)*t;
+        segs.push([sg.x1,sg.y1,mx,my,Math.abs(sg.w1),.8],[mx,my,sg.x2,sg.y2,.8,Math.abs(sg.w2)]);
+      } else segs.push([sg.x1,sg.y1,sg.x2,sg.y2,Math.abs(sg.w1),Math.abs(sg.w2)]);
+      for(const [ax,ay,bx,by,aw,bw] of segs){
+        const px=-DY[sg.dir]/2, py=DX[sg.dir]/2;
+        const pts=`${ax+px*aw},${ay+py*aw} ${bx+px*bw},${by+py*bw} ${bx-px*bw},${by-py*bw} ${ax-px*aw},${ay-py*aw}`;
+        beamLayer.appendChild(el('polygon',{points:pts, fill:col,'fill-opacity':op*.55, filter:'url(#glow)'}));
+        beamLayer.appendChild(el('polygon',{points:pts, fill:col,'fill-opacity':op*.75}));
+      }
+    } else {
+      beamLayer.appendChild(el('line',{x1:sg.x1,y1:sg.y1,x2:sg.x2,y2:sg.y2, stroke:col,
+        'stroke-width':wAvg+4,'stroke-opacity':op*.4,'stroke-linecap':'round', filter:'url(#glow)'}));
+      beamLayer.appendChild(el('line',{x1:sg.x1,y1:sg.y1,x2:sg.x2,y2:sg.y2, stroke:col,
+        'stroke-width':clamp(wAvg*.55,1,10),'stroke-opacity':op,'stroke-linecap':'round'}));
+      const fl=el('line',{x1:sg.x1,y1:sg.y1,x2:sg.x2,y2:sg.y2, stroke:'#fff',
+        'stroke-width':clamp(wAvg*.3,.8,4),'stroke-opacity':op*.5,'stroke-linecap':'round'});
+      fl.setAttribute('class','flow');
+      beamLayer.appendChild(fl);
+    }
+  }
+}
+
+/* ------------------ detector windows ------------------ */
+const winLayer=$('#windows');
+const winEls={};   // blockId -> {div, canvas, valEl}
+
+function updateWindows(){
+  const want = state.blocks.filter(b=>DETECTORS.includes(b.type));
+  // remove stale
+  for(const id in winEls) if(!want.find(b=>b.id==id)){ winEls[id].div.remove(); delete winEls[id]; }
+  for(const b of want){
+    let w=winEls[b.id];
+    if(w && w.type!==b.type){ w.div.remove(); delete winEls[b.id]; w=null; }
+    if(!w){
+      const div=document.createElement('div'); div.className='dwin';
+      const names={screen:'Screen view', pd:'Photodiode', spectro:'Spectrometer', spcm:'Photon counter'};
+      div.innerHTML=`<h4>${names[b.type]}</h4><canvas width="146" height="86"></canvas><div class="dval"></div>`;
+      winLayer.appendChild(div);
+      w=winEls[b.id]={div, canvas:div.querySelector('canvas'), val:div.querySelector('.dval'), type:b.type};
+    }
+    // position: prefer right of block, flip if off-board
+    let x=(b.c+1)*CS+8, y=b.r*CS-6;
+    if(x+166>BW) x=b.c*CS-166;
+    y=clamp(y,0,BH-120);
+    w.div.style.left=x+'px'; w.div.style.top=y+'px';
+    w.block=b;
+    drawWindow(w);
+  }
+}
+
+function drawWindow(w){
+  const b=w.block, hits=b._hits||[], ctx=w.canvas.getContext('2d');
+  const W=146,H=86;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#080c16'; ctx.fillRect(0,0,W,H);
+  const Itot=hits.reduce((a,h)=>a+h.I,0);
+  if(b.type==='pd'){
+    // response curve V vs brightness, dot at current point
+    ctx.strokeStyle='#33405f'; ctx.beginPath(); ctx.moveTo(18,H-14); ctx.lineTo(W-6,H-14);
+    ctx.moveTo(18,H-14); ctx.lineTo(18,6); ctx.stroke();
+    ctx.fillStyle='#8494b3'; ctx.font='9px sans-serif';
+    ctx.fillText('brightness',W-56,H-3); ctx.save(); ctx.translate(8,44); ctx.rotate(-Math.PI/2); ctx.fillText('V out',0,0); ctx.restore();
+    ctx.strokeStyle='#4cc9f0'; ctx.beginPath();
+    for(let i=0;i<=100;i++){ const P=i/100*1.6; const V=3.3*(1-Math.exp(-P*1.8));
+      const x=18+(W-26)*i/100, y=H-14-(H-24)*V/3.3;
+      i? ctx.lineTo(x,y): ctx.moveTo(x,y); }
+    ctx.stroke();
+    const P=clamp(Itot,0,1.6), V=3.3*(1-Math.exp(-P*1.8));
+    const x=18+(W-26)*P/1.6, y=H-14-(H-24)*V/3.3;
+    ctx.fillStyle='#ffd166'; ctx.beginPath(); ctx.arc(x,y,3.6,0,7); ctx.fill();
+    w.val.textContent = `V = ${V.toFixed(2)} V   (P ≈ ${(Itot*100).toFixed(1)}%)`;
+    w.val.classList.toggle('sat', false);
+  }
+  else if(b.type==='spectro'){
+    // spectrum plot 400–750
+    ctx.strokeStyle='#33405f'; ctx.beginPath(); ctx.moveTo(6,H-12); ctx.lineTo(W-4,H-12); ctx.stroke();
+    ctx.fillStyle='#8494b3'; ctx.font='8.5px sans-serif';
+    ctx.fillText('400',4,H-2); ctx.fillText('575',W/2-8,H-2); ctx.fillText('750 nm',W-30,H-2);
+    const lam0=400,lam1=750;
+    const spec=[]; for(const h of hits) for(const s of h.spec) spec.push({wl:s.wl,I:s.I,narrow:h.coh});
+    if(spec.length){
+      const vals=new Array(W).fill(0);
+      for(const s of spec){ const sg=s.narrow?3:22;
+        for(let x=0;x<W;x++){ const wl=lam0+(lam1-lam0)*x/W;
+          vals[x]+=s.I*Math.exp(-((wl-s.wl)**2)/(2*sg*sg)); } }
+      const m=Math.max(...vals)||1;
+      for(let x=0;x<W;x++){ const wl=lam0+(lam1-lam0)*x/W; const c=wl2rgb(wl);
+        const hgt=(H-20)*vals[x]/m;
+        ctx.fillStyle=`rgba(${c[0]*255|0},${c[1]*255|0},${c[2]*255|0},.9)`;
+        ctx.fillRect(x,H-12-hgt,1,hgt); }
+      const pk=meanWl(spec.map(s=>({wl:s.wl,I:s.I})));
+      w.val.textContent=`peak ≈ ${Math.round(pk)} nm`;
+    } else w.val.textContent='no light';
+  }
+  else if(b.type==='spcm'){
+    const rate=Itot*2e6;   // stylized cts/s
+    const sat=rate>8e6;
+    ctx.strokeStyle='#1c2740'; ctx.beginPath(); ctx.moveTo(4,H-16); ctx.lineTo(W-4,H-16); ctx.stroke();
+    // pulse train drawn in animate() — baseline here
+    w.rate=rate; w.sat=sat;
+    w.val.textContent = sat? '⚠ SATURATED — add ND filter!' :
+      rate>0? `${rate>=1e6? (rate/1e6).toFixed(2)+' Mcts/s' : rate>=1e3? (rate/1e3).toFixed(1)+' kcts/s' : Math.round(rate)+' cts/s'}` : 'no counts';
+    w.val.classList.toggle('sat', sat);
+  }
+  else if(b.type==='screen'){
+    drawScreen(ctx,W,H,hits);
+    const coh=hits.filter(h=>h.coh);
+    const two = coh.length>=2 && coh.some(h=>h.src===coh[0].src && h!==coh[0]);
+    const dif = hits.some(h=>h.diff>0);
+    const mk=hits.find(h=>h.mask);
+    w.val.textContent = !hits.length? 'dark' :
+      mk? ((mk.mask.fstage||0)%2? 'Fourier plane — spatial spectrum' :
+           (mk.mask.v>.25||mk.mask.h>.25)?
+             `image: ${mk.mask.v>.25&&mk.mask.h>.25?'grid':mk.mask.v>.25?'vertical lines':'horizontal lines'}` :
+             'DC only — pattern removed') :
+      (two&&dif)? 'interference + diffraction' :
+      two? 'interference fringes' : dif? 'diffraction (Airy) pattern' :
+      hits.some(h=>h.disp)? 'dispersed spectrum' : 'beam spot';
+  }
+}
+
+function drawScreen(ctx,W,H,hits){
+  if(!hits.length) return;
+  const maskH=hits.find(h=>h.mask);
+  if(maskH){ drawMaskPattern(ctx,W,H,maskH,hits); return; }
+  const img=ctx.createImageData(W,H), d=img.data;
+  // pattern parameters
+  const coh=hits.filter(h=>h.coh);
+  let fringe=null;
+  // find two coherent hits from same source → interference
+  for(let i=0;i<coh.length && !fringe;i++)
+    for(let j=i+1;j<coh.length;j++)
+      if(coh[i].src===coh[j].src){
+        const lam=meanWl(coh[i].spec);
+        const dPath=Math.abs(coh[i].path-coh[j].path);
+        const phase=((dPath*50e6/lam)*2*Math.PI)%(2*Math.PI);
+        const V=2*Math.sqrt(coh[i].I*coh[j].I)/(coh[i].I+coh[j].I+1e-12);
+        fringe={lam, phase, V, horiz: coh[i].dir!==coh[j].dir ? (coh[i].dir%2===0) : true};
+        break;
+      }
+  const diffH=hits.find(h=>h.diff>0);
+  const dispH=hits.find(h=>h.disp);
+  const Itot=hits.reduce((a,h)=>a+h.I,0);
+  const colStr=specColor(hits.flatMap(h=>h.spec));
+  const cm=colStr.match(/\d+/g).map(Number);
+  const wAvg=hits.reduce((a,h)=>a+h.w,0)/hits.length;
+  const cx=W/2, cy=H/2;
+  const bright=clamp(.35+Itot*.8,0,1.15);
+  // dispersed light: precompute per-column intensity from the ACTUAL spectrum (laser -> single
+  // stripe at its wavelength position; broadband -> rainbow with any filtered gaps visible)
+  let dispCols=null;
+  if(dispH && !fringe && !diffH){
+    const samples=hits.filter(h=>h.disp).flatMap(h=>h.spec.map(s=>({wl:s.wl, I:s.I, narrow:h.coh})));
+    const Im=Math.max(...samples.map(s=>s.I))||1;
+    dispCols=new Array(W);
+    for(let x=0;x<W;x++){
+      const wl=420+(x/W)*300;
+      let v=0;
+      for(const s of samples){ const sgm=s.narrow?6:18;
+        v+=(s.I/Im)*Math.exp(-((wl-s.wl)**2)/(2*sgm*sgm)); }
+      const c=wl2rgb(wl);
+      dispCols[x]=[c[0]*255, c[1]*255, c[2]*255, Math.min(v,1)];
+    }
+  }
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    let v;
+    if(dispCols){
+      const env=Math.exp(-((y-cy)**2)/(2*(H*.18)**2));
+      const dc=dispCols[x], k=(y*W+x)*4, m=dc[3]*env*bright;
+      d[k]=dc[0]*m; d[k+1]=dc[1]*m; d[k+2]=dc[2]*m; d[k+3]=255;
+      continue;
+    }
+    if(diffH){
+      // Airy-like rings; ring scale ∝ λ/d
+      const lam=meanWl(diffH.spec);
+      const scale=clamp((10+16*Math.log10(1+diffH.diff))*(lam/550), 8, 34);
+      const rr=Math.hypot(x-cx,y-cy)/scale;
+      const t=Math.PI*rr;
+      const airy = rr<.61? 1 : Math.abs(Math.sin(t)/(t+1e-9))*1.15;
+      v=Math.pow(clamp(airy,0,1), .7)*Math.exp(-rr*.30);
+    } else {
+      // gaussian spot
+      const sx=clamp(wAvg*2.2,6,44), sy=sx;
+      v=Math.exp(-(((x-cx)**2)/(2*sx*sx) + ((y-cy)**2)/(2*sy*sy)));
+    }
+    if(fringe){
+      const Lam=clamp(16*(fringe.lam/550),7,30);
+      const coord=fringe.horiz? x : y;
+      v*= (1+fringe.V*Math.cos(2*Math.PI*coord/Lam + fringe.phase))/2;
+      if(!diffH){ // widen the illuminated field for fringes
+        const env=Math.exp(-(((x-cx)**2)/(2*(W*.3)**2) + ((y-cy)**2)/(2*(H*.3)**2)));
+        v=Math.max(v* (env*2), v*.0);
+        v=Math.min(v,1)* (0.4+0.6*env);
+      }
+    }
+    v*=bright;
+    const k=(y*W+x)*4;
+    d[k]  =clamp(cm[0]*v,0,255);
+    d[k+1]=clamp(cm[1]*v,0,255);
+    d[k+2]=clamp(cm[2]*v,0,255);
+    d[k+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* 4f Fourier optics: screen pattern for a beam carrying an object mask */
+function drawMaskPattern(ctx,W,H,mh,hits){
+  const m=mh.mask;
+  const col=specColor(mh.spec).match(/\d+/g).map(Number);
+  const Itot=hits.reduce((a,h)=>a+h.I,0);
+  const bright=clamp(.45+Itot*.9, 0, 1.1);
+  const img=ctx.createImageData(W,H), d=img.data;
+  const cx=W/2, cy=H/2;
+  if((m.fstage||0)%2===1){
+    // Fourier plane: DC spot + diffraction orders along kx (from vertical lines) / ky (from horizontal lines)
+    const gap=8+m.period*2.2, sig=2.6;
+    const spots=[[0,0,1]];
+    for(let n=1;n<=4;n++){
+      const a=Math.pow(.55,n-1);
+      if(m.v>.02) spots.push([ n*gap,0,m.v*a],[-n*gap,0,m.v*a]);
+      if(m.h>.02) spots.push([0, n*gap,m.h*a],[0,-n*gap,m.h*a]);
+    }
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      let v=0;
+      for(const s of spots){
+        const dx=x-cx-s[0], dy=y-cy-s[1];
+        v+=s[2]*Math.exp(-(dx*dx+dy*dy)/(2*sig*sig));
+      }
+      v=clamp(v*bright,0,1);
+      const k=(y*W+x)*4; d[k]=col[0]*v; d[k+1]=col[1]*v; d[k+2]=col[2]*v; d[k+3]=255;
+    }
+  } else {
+    // image plane: reconstructed stripes from surviving frequency components
+    const P=clamp(46/m.period, 5, 26);
+    const norm=.3+m.v+m.h;
+    const env=(x,y)=>Math.exp(-(((x-cx)**2)/(2*(W*.36)**2)+((y-cy)**2)/(2*(H*.36)**2)));
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      let v=.3 + m.v*(0.5+0.5*Math.cos(2*Math.PI*x/P))
+              + m.h*(0.5+0.5*Math.cos(2*Math.PI*y/P));
+      v=clamp(v/norm*bright*env(x,y),0,1);
+      const k=(y*W+x)*4; d[k]=col[0]*v; d[k+1]=col[1]*v; d[k+2]=col[2]*v; d[k+3]=255;
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* SPCM pulse-train animation */
+let spcmPhase=0;
+function animate(ts){
+  spcmPhase=ts/1000;
+  for(const id in winEls){
+    const w=winEls[id];
+    if(w.type!=='spcm') continue;
+    const ctx=w.canvas.getContext('2d'), W=146,H=86;
+    ctx.fillStyle='#080c16'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#1c2740'; ctx.beginPath(); ctx.moveTo(0,H-16); ctx.lineTo(W,H-16); ctx.stroke();
+    const rate=w.rate||0;
+    if(rate>0){
+      const density=clamp(Math.log10(rate+1)/7,0.02,1);
+      const n=Math.floor(3+density*34);
+      ctx.strokeStyle=w.sat?'#ef476f':'#06d6a0'; ctx.lineWidth=1.6;
+      ctx.beginPath();
+      let px=0; ctx.moveTo(0,H-16);
+      for(let i=0;i<n;i++){
+        // deterministic pseudo-random pulse positions, scrolling with time
+        const seed=Math.sin(i*127.1+ +id)*43758.545;
+        const frac=(seed-Math.floor(seed));
+        let x=((frac + spcmPhase*(.25+density*.7))%1)*W;
+        ctx.moveTo(x,H-16); ctx.lineTo(x,H-16-(20+frac*38));
+      }
+      ctx.stroke();
+      if(w.sat){ ctx.fillStyle='rgba(239,71,111,.15)'; ctx.fillRect(0,0,W,H); }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+/* ------------------ palette ------------------ */
+(function buildPalette(){
+  const pal=$('#palette');
+  for(const cat of CATS){
+    const h=document.createElement('h3'); h.textContent=cat; pal.appendChild(h);
+    for(const type in DEFS){
+      if(DEFS[type].cat!==cat) continue;
+      const item=document.createElement('div'); item.className='pitem'; item.dataset.type=type;
+      item.innerHTML=`<svg width="34" height="34" viewBox="0 0 ${CS} ${CS}">${blockSVG(type, DEFS[type].props, 0, CS)}</svg>
+        <div class="plabel">${DEFS[type].name}</div>`;
+      pal.appendChild(item);
+    }
+  }
+})();
+
+/* ------------------ interaction: drag & drop ------------------ */
+const ghost=$('#ghost');
+let drag=null; // {type:'new'|'move', blockType?, id?, startX, startY, moved}
+
+function boardCell(ev){
+  const r=board.getBoundingClientRect();
+  const cell=r.width/COLS; // accounts for zoom
+  const c=Math.floor((ev.clientX-r.left)/cell), rr=Math.floor((ev.clientY-r.top)/cell);
+  if(c<0||c>=COLS||rr<0||rr>=ROWS) return null;
+  return {c, r:rr};
+}
+function showGhost(type, props, rot, x, y){
+  const gs=CS*zoom;
+  ghost.innerHTML=`<svg width="${gs}" height="${gs}" viewBox="0 0 ${CS} ${CS}">${blockSVG(type,props,rot,CS)}</svg>`;
+  ghost.style.display='block';
+  ghost.style.left=(x-gs/2)+'px'; ghost.style.top=(y-gs/2)+'px';
+}
+
+document.addEventListener('pointerdown', ev=>{
+  const pit=ev.target.closest('.pitem');
+  if(pit){
+    drag={mode:'new', type:pit.dataset.type, startX:ev.clientX, startY:ev.clientY, moved:false};
+    ev.preventDefault(); return;
+  }
+  const bg=ev.target.closest('.blk');
+  if(bg){
+    const id=+bg.dataset.id;
+    drag={mode:'move', id, startX:ev.clientX, startY:ev.clientY, moved:false};
+    ev.preventDefault();
+  }
+});
+document.addEventListener('pointermove', ev=>{
+  if(!drag) return;
+  if(!drag.moved && Math.hypot(ev.clientX-drag.startX, ev.clientY-drag.startY)>6) drag.moved=true;
+  if(!drag.moved) return;
+  if(drag.mode==='new') showGhost(drag.type, DEFS[drag.type].props, 0, ev.clientX, ev.clientY);
+  else { const b=state.blocks.find(x=>x.id===drag.id);
+    if(b) showGhost(b.type, b.props, b.rot, ev.clientX, ev.clientY); }
+});
+document.addEventListener('pointerup', ev=>{
+  if(!drag){ return; }
+  ghost.style.display='none';
+  const cell=boardCell(ev);
+  if(drag.mode==='new' && drag.moved && cell && !blockAt(cell.c,cell.r)){
+    addBlock(drag.type, cell.c, cell.r);
+  }
+  else if(drag.mode==='move'){
+    if(drag.moved && cell){
+      const b=state.blocks.find(x=>x.id===drag.id);
+      const occ=blockAt(cell.c,cell.r);
+      if(b && (!occ || occ.id===b.id)){ b.c=cell.c; b.r=cell.r; commit(); }
+      selectBlock(drag.id);
+    } else if(!drag.moved){
+      selectBlock(drag.id);
+    }
+  }
+  drag=null;
+});
+board.addEventListener('pointerdown', ev=>{
+  if(!ev.target.closest('.blk')) selectBlock(null);
+});
+board.addEventListener('dblclick', ev=>{
+  const bg=ev.target.closest('.blk'); if(!bg) return;
+  rotateBlock(+bg.dataset.id);
+});
+document.addEventListener('keydown', ev=>{
+  if(ev.target.tagName==='INPUT'||ev.target.tagName==='SELECT') return;
+  if((ev.key==='r'||ev.key==='R') && selId!=null) rotateBlock(selId);
+  if((ev.key==='Delete'||ev.key==='Backspace') && selId!=null){ removeBlock(selId); ev.preventDefault(); }
+  if(ev.key==='Escape') selectBlock(null);
+  if(ev.key==='+'||ev.key==='=') setZoom(zoom*1.2);
+  if(ev.key==='-') setZoom(zoom/1.2);
+  if(ev.key==='0') fitZoom();
+});
+
+/* ------------------ block ops ------------------ */
+function addBlock(type, c, r){
+  const b={id:nextId++, type, c, r, rot:0, props:JSON.parse(JSON.stringify(DEFS[type].props))};
+  state.blocks.push(b);
+  commit(); selectBlock(b.id);
+}
+function removeBlock(id){
+  state.blocks=state.blocks.filter(b=>b.id!==id);
+  if(selId===id) selId=null;
+  commit(); renderInspector();
+}
+function rotateBlock(id){
+  const b=state.blocks.find(x=>x.id===id); if(!b) return;
+  b.rot=(b.rot+1)%4;
+  commit(); renderInspector();
+}
+function selectBlock(id){
+  selId=id;
+  renderBlocks(); renderInspector();
+}
+function commit(){
+  renderBlocks(); trace(); autosave();
+}
+
+/* ------------------ inspector ------------------ */
+function renderInspector(){
+  const insp=$('#insp');
+  const b=state.blocks.find(x=>x.id===selId);
+  if(!b){ insp.innerHTML='<h3>Inspector</h3><div class="hint">Drag a block from the palette onto the grid.<br><br>Click a block to edit its properties here.</div>'; return; }
+  const def=DEFS[b.type];
+  let html=`<h3>Inspector</h3><div class="bname">${def.name}</div>`;
+  if(def.note) html+=`<div class="hint" style="margin-bottom:9px;font-size:11.5px;color:var(--dim)">${def.note}</div>`;
+  for(const p of def.schema){
+    const v=b.props[p.k];
+    if(p.type==='toggle'){
+      html+=`<div class="prow"><button class="togglebtn ${v?'on':''}" data-k="${p.k}">${p.label}: ${v?'ON':'OFF'}</button></div>`;
+    } else if(p.type==='select'){
+      html+=`<div class="prow"><label>${p.label}</label>
+        <select class="btn" data-k="${p.k}" style="width:100%">`+
+        p.opts.map(o=>`<option value="${o[0]}" ${v===o[0]?'selected':''}>${o[1]}</option>`).join('')+
+        `</select></div>`;
+    } else {
+      const disp = p.fmt? p.fmt(v) : fmt(v)+(p.unit?' '+p.unit:'');
+      html+=`<div class="prow"><label>${p.label}<b data-lbl="${p.k}">${disp}</b></label>
+        <input type="range" data-k="${p.k}" min="${p.min}" max="${p.max}" step="${p.step}" value="${v}"></div>`;
+    }
+  }
+  html+=`<div class="actrow"><button class="btn" id="rotB">↻ Rotate</button><button class="btn warn" id="delB">✕ Delete</button></div>`;
+  insp.innerHTML=html;
+  insp.querySelectorAll('input[type=range]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const k=inp.dataset.k, p=def.schema.find(s=>s.k===k);
+      b.props[k]=+inp.value;
+      insp.querySelector(`[data-lbl="${k}"]`).textContent = p.fmt? p.fmt(+inp.value) : fmt(+inp.value)+(p.unit?' '+p.unit:'');
+      commit();
+    });
+  });
+  insp.querySelectorAll('select[data-k]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{ b.props[sel.dataset.k]=sel.value; commit(); renderInspector(); });
+  });
+  insp.querySelectorAll('.togglebtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ b.props[btn.dataset.k]=!b.props[btn.dataset.k]; commit(); renderInspector(); });
+  });
+  insp.querySelector('#rotB').addEventListener('click', ()=>rotateBlock(b.id));
+  insp.querySelector('#delB').addEventListener('click', ()=>removeBlock(b.id));
+}
+
+/* ------------------ BOM ------------------ */
+function renderBOM(){
+  const bom=$('#bom');
+  if(!state.blocks.length){ bom.innerHTML='<div class="empty">No blocks placed.</div>'; return; }
+  const counts={};
+  for(const b of state.blocks){
+    let key=DEFS[b.type].name;
+    if(b.type==='laser') key+=` ${b.props.wl} nm`;
+    if(b.type==='lens') key+=` f=${b.props.f} mm`;
+    if(b.type==='dichroic') key+=` ${b.props.cut} nm`;
+    if(b.type==='longpass'||b.type==='shortpass') key+=` ${b.props.cut} nm`;
+    if(b.type==='bandpass') key+=` ${b.props.center}/${b.props.width}`;
+    if(b.type==='nd') key+=` OD ${fmt(b.props.od)}`;
+    if(b.type==='notch') key+=` ${b.props.center} nm`;
+    if(b.type==='raman') key+=b.props.fluor? ' (fluorescent)':'';
+    if(b.type==='object') key+=` (${{vlines:'vert. lines',hlines:'horiz. lines',grid:'grid'}[b.props.pattern]})`;
+    if(b.type==='spatialfilter') key+=` (${{hole:'pinhole',vslit:'vert. slit',hslit:'horiz. slit'}[b.props.shape]} ${fmt(b.props.w)} mm)`;
+    counts[key]=(counts[key]||0)+1;
+  }
+  bom.innerHTML=Object.entries(counts).sort()
+    .map(([k,n])=>`<div class="bomrow"><span>${k}</span><span>× ${n}</span></div>`).join('')
+    + `<div class="bomrow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:5px">
+       <span><b>Total cubes</b></span><span>× ${state.blocks.length}</span></div>`;
+}
+
+/* ------------------ save / load / presets / png ------------------ */
+function serialize(){ return JSON.stringify({app:'optics-playground', version:1,
+  grid:{cols:COLS,rows:ROWS}, blocks:state.blocks.map(({id,type,c,r,rot,props})=>({id,type,c,r,rot,props}))}, null, 1); }
+function loadState(obj){
+  if(!obj || !Array.isArray(obj.blocks)) throw new Error('bad file');
+  if(obj.grid){
+    COLS=clamp(Math.round(obj.grid.cols)||COLS,4,40);
+    ROWS=clamp(Math.round(obj.grid.rows)||ROWS,4,30);
+    BW=COLS*CS; BH=ROWS*CS;
+    sizeBoard(); drawGrid(); applyZoom(); syncGridInputs();
+  }
+  state.blocks = obj.blocks.filter(b=>DEFS[b.type]).map(b=>({
+    id:b.id??nextId++, type:b.type, c:clamp(b.c,0,COLS-1), r:clamp(b.r,0,ROWS-1),
+    rot:(b.rot||0)%4, props:Object.assign(JSON.parse(JSON.stringify(DEFS[b.type].props)), b.props||{})}));
+  nextId=Math.max(0,...state.blocks.map(b=>b.id))+1;
+  selId=null; commit(); renderInspector();
+}
+function autosave(){ try{ localStorage.setItem('optics_playground', serialize()); }catch(e){} }
+
+$('#saveBtn').addEventListener('click', ()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([serialize()],{type:'application/json'}));
+  a.download='optics-layout.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+$('#loadBtn').addEventListener('click', ()=>$('#loadFile').click());
+$('#loadFile').addEventListener('change', ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  f.text().then(t=>{ try{ loadState(JSON.parse(t)); }catch(e){ toast('Could not read this layout file.'); } });
+  ev.target.value='';
+});
+/* two-step clear — native confirm() is silently blocked inside sandboxed iframes */
+let clearArm=null;
+$('#clearBtn').addEventListener('click', ()=>{
+  const btn=$('#clearBtn');
+  if(!state.blocks.length) return;
+  if(clearArm){
+    clearTimeout(clearArm); clearArm=null; btn.textContent='✕ Clear';
+    state.blocks=[]; selId=null; commit(); renderInspector(); toast('Board cleared');
+    return;
+  }
+  btn.textContent='Click again to clear';
+  clearArm=setTimeout(()=>{ clearArm=null; btn.textContent='✕ Clear'; }, 3500);
+});
+$('#pngBtn').addEventListener('click', ()=>{
+  const clone=board.cloneNode(true);
+  clone.querySelectorAll('.flow').forEach(n=>n.remove());
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const svgStr=new XMLSerializer().serializeToString(clone);
+  const img=new Image();
+  img.onload=()=>{
+    const cv=document.createElement('canvas'); cv.width=BW*2; cv.height=BH*2;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#0d1322'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.drawImage(img,0,0,cv.width,cv.height);
+    const a=document.createElement('a');
+    a.href=cv.toDataURL('image/png'); a.download='optics-layout.png'; a.click();
+  };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
+});
+
+/* presets */
+const PRESETS={
+  michelson:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:633,power:1}},
+    {type:'bs', c:5, r:5, rot:0, props:{ratio:50}},
+    {type:'mirror', c:9, r:5, rot:0, props:{}},
+    {type:'mirror', c:5, r:8, rot:1, props:{}},
+    {type:'screen', c:5, r:2, rot:1, props:{}},
+  ]},
+  mz:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:532,power:1}},
+    {type:'bs', c:4, r:5, rot:0, props:{ratio:50}},
+    {type:'mirror45', c:4, r:8, rot:0, props:{}},
+    {type:'mirror45', c:8, r:8, rot:1, props:{}},
+    {type:'bs', c:8, r:5, rot:1, props:{ratio:50}},
+    {type:'screen', c:11, r:5, rot:0, props:{}},
+    {type:'screen', c:8, r:2, rot:1, props:{}},
+  ]},
+  pinhole:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:650,power:1}},
+    {type:'pinhole', c:5, r:5, rot:0, props:{d:-1.3}},
+    {type:'screen', c:10, r:5, rot:0, props:{}},
+  ]},
+  fluo:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:488,power:1}},
+    {type:'dichroic', c:5, r:5, rot:0, props:{cut:505}},
+    {type:'sample', c:5, r:8, rot:0, props:{em:520}},
+    {type:'longpass', c:5, r:3, rot:1, props:{cut:500}},
+    {type:'spcm', c:5, r:1, rot:1, props:{}},
+    {type:'nd', c:3, r:5, rot:0, props:{od:0.5}},
+  ]},
+  fourier:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:532,power:1}},
+    {type:'object', c:3, r:5, rot:0, props:{pattern:'grid',period:4}},
+    {type:'lens', c:5, r:5, rot:0, props:{f:100}},
+    {type:'bs', c:6, r:5, rot:0, props:{ratio:30}},
+    {type:'screen', c:6, r:8, rot:1, props:{}},
+    {type:'spatialfilter', c:7, r:5, rot:0, props:{shape:'vslit',w:1}},
+    {type:'lens', c:9, r:5, rot:0, props:{f:100}},
+    {type:'screen', c:11, r:5, rot:0, props:{}},
+  ]},
+  raman:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:532,power:1}},
+    {type:'raman', c:5, r:5, rot:0, props:{fluor:false}},
+    {type:'notch', c:8, r:5, rot:0, props:{center:532,width:20}},
+    {type:'spectro', c:11, r:5, rot:0, props:{}},
+  ]},
+  malus:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:633,power:1}},
+    {type:'polarizer', c:4, r:5, rot:0, props:{ang:0}},
+    {type:'polarizer', c:7, r:5, rot:0, props:{ang:45}},
+    {type:'pd', c:10, r:5, rot:0, props:{}},
+  ]},
+  fluoem:{blocks:[
+    {type:'laser', c:1, r:5, rot:0, props:{on:true,wl:488,power:1}},
+    {type:'sample', c:5, r:5, rot:0, props:{em:520}},
+    {type:'longpass', c:5, r:3, rot:1, props:{cut:500}},
+    {type:'spectro', c:5, r:1, rot:1, props:{}},
+    {type:'screen', c:9, r:5, rot:0, props:{}},
+  ]},
+  fluoabs:{blocks:[
+    {type:'led', c:1, r:5, rot:0, props:{on:true,bri:1}},
+    {type:'bs', c:3, r:5, rot:0, props:{ratio:30}},
+    {type:'spectro', c:3, r:8, rot:1, props:{}},
+    {type:'sample', c:6, r:5, rot:0, props:{em:520}},
+    {type:'spectro', c:10, r:5, rot:0, props:{}},
+  ]},
+  spectrum:{blocks:[
+    {type:'led', c:1, r:5, rot:0, props:{on:true,bri:1}},
+    {type:'bs', c:4, r:5, rot:0, props:{ratio:30}},
+    {type:'spectro', c:4, r:8, rot:1, props:{}},
+    {type:'grating', c:7, r:5, rot:0, props:{}},
+    {type:'screen', c:11, r:5, rot:0, props:{}},
+  ]},
+};
+$('#presetSel').addEventListener('change', ev=>{
+  const p=PRESETS[ev.target.value];
+  if(p){ loadState({grid:{cols:Math.max(COLS,16), rows:Math.max(ROWS,11)},
+                    blocks:p.blocks.map((b,i)=>({id:i+1,...b}))}); }
+  ev.target.value='';
+});
+
+/* ------------------ init ------------------ */
+(function init(){
+  let restored=false;
+  try{
+    const s=localStorage.getItem('optics_playground') || localStorage.getItem('uc2_playground');
+    if(s){ loadState(JSON.parse(s)); restored=state.blocks.length>0; }
+  }catch(e){}
+  if(!restored){
+    loadState({blocks:PRESETS.michelson.blocks.map((b,i)=>({id:i+1,...b}))});
+  }
+})();
+
+/* debug hook */
+window.PG={state, addBlock, removeBlock, rotateBlock, trace, loadState, PRESETS, get segments(){return segments}};
+</script>
+</body>
+</html>
